@@ -87,10 +87,11 @@ window.nextStep = function (e) {
     if (e) e.preventDefault();
 
     if (!validateCurrentStep()) {
+        // Find and focus the first invalid input
         const firstInvalid = document.querySelector('.is-invalid');
         if (firstInvalid) {
             firstInvalid.focus();
-        } else if (typeof showCustomAlert === 'function') {
+        } else {
             showCustomAlert('خطأ في الإدخال', 'الرجاء ملء جميع الحقول المطلوبة بشكل صحيح.');
         }
         return false;
@@ -116,9 +117,7 @@ window.prevStep = function () {
 
 window.placeOrder = function () {
     if (!validateCurrentStep()) {
-        if (typeof showCustomAlert === 'function') {
-            showCustomAlert('خطأ في الإدخال', 'الرجاء مراجعة معلومات الطلب قبل التأكيد.');
-        }
+        showCustomAlert('خطأ في الإدخال', 'الرجاء مراجعة معلومات الطلب قبل التأكيد.');
         return;
     }
 
@@ -170,47 +169,25 @@ function updateCheckoutSummary() {
 }
 
 function populateOrderSummary() {
-    const getVal = (id) => document.getElementById(id)?.value || '';
+    document.getElementById('reviewFullName').innerText = document.getElementById('fullName').value;
+    document.getElementById('reviewAddress').innerText = document.getElementById('address').value;
+    document.getElementById('reviewCountry').innerText = document.getElementById('country').options[document.getElementById('country').selectedIndex].text;
+    document.getElementById('reviewZipCode').innerText = document.getElementById('zipCode').value;
+    document.getElementById('reviewPhone').innerText = window.phoneInput ? window.phoneInput.getNumber() : document.getElementById('phone').value;
+    document.getElementById('reviewEmail').innerText = document.getElementById('email').value;
+    document.getElementById('reviewShippingNotes').innerText = document.getElementById('shippingNotes').value || 'لا توجد ملاحظات';
 
-    const fullNameElem = document.getElementById('reviewFullName');
-    const addressElem = document.getElementById('reviewAddress');
-    const zipCodeElem = document.getElementById('reviewZipCode');
-    const emailElem = document.getElementById('reviewEmail');
-    const notesElem = document.getElementById('reviewShippingNotes');
-    const phoneElem = document.getElementById('reviewPhone');
-    const countryElem = document.getElementById('reviewCountry');
-    const paymentElem = document.getElementById('reviewPaymentMethod');
-
-    if (fullNameElem) fullNameElem.innerText = getVal('fullName');
-    if (addressElem) addressElem.innerText = getVal('address');
-    if (zipCodeElem) zipCodeElem.innerText = getVal('zipCode');
-    if (emailElem) emailElem.innerText = getVal('email');
-    if (notesElem) notesElem.innerText = getVal('shippingNotes') || 'لا توجد ملاحظات';
-
-    if (phoneElem) {
-        const phoneInputElem = document.getElementById('phone');
-        phoneElem.innerText = window.phoneInput ? window.phoneInput.getNumber() : (phoneInputElem?.value || '');
+    const selectedPaymentMethod = document.querySelector('input[name="paymentMethod"]:checked').value;
+    let paymentMethodText = '';
+    if (selectedPaymentMethod === 'credit-card') {
+        paymentMethodText = 'بطاقة الائتمان / الخصم';
+    } else if (selectedPaymentMethod === 'cash-on-delivery') {
+        paymentMethodText = 'الدفع عند الاستلام';
     }
-
-    if (countryElem) {
-        const countrySelect = document.getElementById('country');
-        if (countrySelect && countrySelect.selectedIndex !== -1) {
-            countryElem.innerText = countrySelect.options[countrySelect.selectedIndex].text;
-        }
-    }
-
-    if (paymentElem) {
-        const selectedPaymentMethod = document.querySelector('input[name="paymentMethod"]:checked')?.value;
-        let paymentMethodText = '';
-        if (selectedPaymentMethod === 'credit-card') {
-            paymentMethodText = 'بطاقة الائتمان / الخصم';
-        } else if (selectedPaymentMethod === 'cash-on-delivery') {
-            paymentMethodText = 'الدفع عند الاستلام';
-        }
-        paymentElem.innerText = paymentMethodText;
-    }
+    document.getElementById('reviewPaymentMethod').innerText = paymentMethodText;
 
     renderCheckoutCartItems();
+    updateCheckoutSummary();
 }
 
 // ==========================================================================
@@ -221,22 +198,18 @@ document.addEventListener("DOMContentLoaded", function () {
     const isCheckoutPage = document.querySelector('.checkout-container') !== null;
 
     if (isCartPage) {
-        if (typeof initializeCartItemListeners === 'function') initializeCartItemListeners();
-        if (typeof updateCartSummary === 'function') updateCartSummary();
-        if (typeof checkEmptyCart === 'function') checkEmptyCart();
+        initializeCartItemListeners();
+        updateCartSummary();
+        checkEmptyCart();
 
         const applyCouponBtn = document.getElementById('applyCouponBtn');
         if (applyCouponBtn) {
             applyCouponBtn.addEventListener('click', () => {
-                const couponCode = document.getElementById('couponCode')?.value.trim();
+                const couponCode = document.getElementById('couponCode').value.trim();
                 if (couponCode) {
-                    if (typeof showCustomAlert === 'function') {
-                        showCustomAlert('تطبيق الكوبون', `تم محاولة تطبيق الكوبون: ${couponCode}. في تطبيق حقيقي، سيتم التحقق من هذا الكوبون.`);
-                    }
+                    showCustomAlert('تطبيق الكوبون', `تم محاولة تطبيق الكوبون: ${couponCode}. في تطبيق حقيقي، سيتم التحقق من هذا الكوبون.`);
                 } else {
-                    if (typeof showCustomAlert === 'function') {
-                        showCustomAlert('خطأ', 'الرجاء إدخال رمز الكوبون.');
-                    }
+                    showCustomAlert('خطأ', 'الرجاء إدخال رمز الكوبون.');
                 }
             });
         }
@@ -244,7 +217,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     if (isCheckoutPage) {
         const phoneInput = document.querySelector("#phone");
-        if (phoneInput && !window.phoneInput && window.intlTelInput) {
+        if (phoneInput && !window.phoneInput) {  // Only initialize if not already initialized
             window.phoneInput = window.intlTelInput(phoneInput, {
                 initialCountry: "sa",
                 separateDialCode: true,
@@ -252,6 +225,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 utilsScript: "https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.8/js/utils.js"
             });
 
+            // Add validation on blur
             phoneInput.addEventListener('blur', function () {
                 if (window.phoneInput && !window.phoneInput.isValidNumber()) {
                     this.classList.add('is-invalid');
@@ -260,6 +234,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
             });
 
+            // Remove invalid state on input
             phoneInput.addEventListener('input', function () {
                 this.classList.remove('is-invalid');
             });
@@ -294,7 +269,6 @@ document.addEventListener("DOMContentLoaded", function () {
             });
         });
 
-        renderCheckoutCartItems();
         showStep(1);
     }
 });
@@ -313,9 +287,6 @@ function toggleDarkMode() {
 
 document.addEventListener('DOMContentLoaded', function() {
     const savedTheme = localStorage.getItem('theme') || 'light';
-    if (savedTheme === 'dark') {
-        document.documentElement.setAttribute('data-theme', 'dark');
-    }
     const icon = document.getElementById('modeIcon');
     if (icon) {
         icon.className = savedTheme === 'dark' ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
